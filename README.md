@@ -6,7 +6,7 @@
 
 This contains everything you need to run your app locally.
 
-View your app in AI Studio: https://ai.studio/apps/a8df6dd1-e7a5-4973-ab55-d31926442068
+View your app in AI Studio: https://delaneyxz.github.io/Realtalk/a8df6dd1-e7a5-4973-ab55-d31926442068
 
 ## Run Locally
 
