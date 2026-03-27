@@ -1,0 +1,75 @@
+{
+  "entities": {
+    "account": {
+      "title": "Account",
+      "description": "Represents a team-managed account with credentials.",
+      "type": "object",
+      "properties": {
+        "gmail": {
+          "type": "string",
+          "description": "The Gmail address of the account."
+        },
+        "password": {
+          "type": "string",
+          "description": "The password for the account."
+        },
+        "twoFactor": {
+          "type": "string",
+          "description": "The 2FA code or secret for the account."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Ok", "Pending"],
+          "description": "The current status of the account."
+        },
+        "createdBy": {
+          "type": "string",
+          "description": "The username of the team member who created the account."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the account was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the account was last updated."
+        }
+      },
+      "required": ["gmail", "password", "status", "createdBy", "createdAt"]
+    },
+    "user": {
+      "title": "User",
+      "description": "Represents a team member with access to the dashboard.",
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string",
+          "description": "The unique username for the team member."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "member"],
+          "description": "The role of the user."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The email address associated with the user account."
+        }
+      },
+      "required": ["username", "role", "email"]
+    }
+  },
+  "firestore": {
+    "/accounts/{accountId}": {
+      "schema": "account",
+      "description": "Collection of team-managed accounts."
+    },
+    "/users/{userId}": {
+      "schema": "user",
+      "description": "Collection of authorized team members."
+    }
+  }
+}
