@@ -1,13 +1,589 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Project Alpha | Secure Account Hub</title>
+    <!-- TailwindCSS + Font Awesome + DataTables + jQuery + Three.js -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <!-- Three.js for 3D alien -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js"
+            }
+        }
+    </script>
+    <style>
+        /* Custom dark theme & table overrides */
+        body {
+            background: radial-gradient(circle at 20% 30%, #0a0f1e, #03050b);
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        .dataTables_wrapper .dataTables_length, 
+        .dataTables_wrapper .dataTables_filter,
+        .dataTables_wrapper .dataTables_info,
+        .dataTables_wrapper .dataTables_paginate {
+            color: #e2e8f0 !important;
+        }
+        .dataTables_wrapper .dataTables_paginate .paginate_button {
+            background: #1e293b;
+            color: #cbd5e1 !important;
+            border: 1px solid #334155;
+        }
+        .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+            background: #ff4d6d;
+            border-color: #ff4d6d;
+            color: white !important;
+        }
+        table.dataTable thead th {
+            background: #0f172a;
+            color: #f1f5f9;
+            border-bottom: 2px solid #ff4d6d;
+        }
+        table.dataTable tbody tr {
+            background-color: #111827;
+            color: #e2e8f0;
+        }
+        table.dataTable tbody tr:hover {
+            background-color: #1e293b;
+        }
+        input, select {
+            background: #1e293b;
+            border: 1px solid #334155;
+            color: white;
+            border-radius: 0.5rem;
+            padding: 0.4rem 0.6rem;
+            font-size: 0.85rem;
+        }
+        .glass-panel {
+            background: rgba(15, 25, 45, 0.65);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 1.5rem;
+        }
+        .btn-primary {
+            background: linear-gradient(90deg, #ff4d6d, #c9184a);
+            transition: all 0.2s;
+        }
+        .btn-primary:hover {
+            transform: scale(1.02);
+            box-shadow: 0 8px 20px rgba(255,77,109,0.3);
+        }
+        /* custom scroll */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0f0f1a; }
+        ::-webkit-scrollbar-thumb { background: #ff4d6d; border-radius: 10px; }
+        .icon-btn {
+            cursor: pointer;
+            transition: 0.1s;
+            padding: 0.2rem;
+        }
+        .icon-btn:hover { transform: scale(1.15); color: #ff4d6d; }
+        .toast-notify {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #1e293b;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            z-index: 9999;
+            border-left: 4px solid #ff4d6d;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body class="antialiased">
 
+<!-- LOGIN MODAL -->
+<div id="loginModal" class="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50">
+    <div class="glass-panel p-8 w-96 rounded-2xl shadow-2xl">
+        <div class="text-center mb-6">
+            <i class="fas fa-user-astronaut text-5xl text-pink-500"></i>
+            <h2 class="text-2xl font-bold mt-3 text-white">Team Access</h2>
+            <p class="text-gray-300 text-sm">Enter your credentials</p>
+        </div>
+        <div class="space-y-4">
+            <input type="text" id="loginUsername" placeholder="Username" class="w-full p-3 rounded-xl bg-gray-800 border border-gray-600 text-white">
+            <input type="password" id="loginPassword" placeholder="Password" class="w-full p-3 rounded-xl bg-gray-800 border border-gray-600 text-white">
+            <button id="loginBtn" class="w-full btn-primary py-3 rounded-xl font-semibold text-white">Login</button>
+            <p class="text-xs text-center text-gray-400 mt-3">Admin: admin / admin123 | Team members added by admin</p>
+        </div>
+    </div>
+</div>
+
+<!-- MAIN DASHBOARD (hidden until login) -->
+<div id="dashboard" class="hidden min-h-screen">
+    <!-- HEADER with 3D canvas -->
+    <div class="relative">
+        <!-- Three.js canvas container (top center) -->
+        <div id="alienCanvas" class="absolute top-0 left-1/2 transform -translate-x-1/2 w-56 h-56 z-10 pointer-events-none"></div>
+        
+        <div class="flex justify-between items-center p-5 bg-black/30 backdrop-blur-sm border-b border-white/10">
+            <div class="text-2xl font-bold tracking-tight"><span class="text-pink-500">⚡</span> Project Alpha</div>
+            <div class="flex items-center gap-4">
+                <span id="userNameDisplay" class="text-white bg-white/10 px-4 py-2 rounded-full text-sm"><i class="fas fa-user-circle mr-2"></i><span id="currentUsername">user</span></span>
+                <button id="logoutBtn" class="text-sm bg-red-500/20 hover:bg-red-500/40 px-3 py-1 rounded-full transition"><i class="fas fa-sign-out-alt"></i> Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FILTER BAR -->
+    <div class="glass-panel mx-6 mt-20 p-4 flex flex-wrap gap-4 items-center justify-between">
+        <div class="flex gap-3 items-center">
+            <div class="relative">
+                <i class="fas fa-calendar-alt absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                <input type="date" id="dateFilter" class="pl-9 pr-3 py-2 rounded-lg bg-gray-800 border-gray-600 text-white">
+            </div>
+            <div class="relative">
+                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                <input type="text" id="searchBox" placeholder="Search Gmail, password..." class="pl-9 pr-3 py-2 w-64 rounded-lg bg-gray-800">
+            </div>
+            <button id="filterBtn" class="bg-pink-600 hover:bg-pink-700 px-5 py-2 rounded-lg text-white font-medium transition"><i class="fas fa-filter mr-1"></i> Apply</button>
+            <select id="statusFilter" class="bg-gray-800 border-gray-600 rounded-lg py-2 px-3 text-white">
+                <option value="">All Status</option>
+                <option value="Ok">Ok</option>
+                <option value="Pending">Pending</option>
+            </select>
+        </div>
+        <div class="text-sm text-gray-300"><i class="fas fa-database"></i> Real-time sync | Edits visible to all</div>
+    </div>
+
+    <!-- DATA TABLE (1000 rows) -->
+    <div class="mx-6 my-6 overflow-x-auto">
+        <table id="accountsTable" class="display w-full text-sm" style="width:100%">
+            <thead>
+                <tr><th>Gmail</th><th>Password</th><th>2FA</th><th>Status</th><th>Date Added</th><th>Actions</th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ADMIN PANEL (hidden by default) -->
+<div id="adminPanel" class="fixed bottom-4 left-4 z-40 hidden">
+    <button id="toggleAdminBtn" class="bg-gray-800 p-2 rounded-full shadow-lg hover:bg-gray-700"><i class="fas fa-user-shield"></i></button>
+    <div id="adminMenu" class="absolute bottom-12 left-0 bg-gray-900 border border-gray-700 rounded-xl p-4 w-64 hidden">
+        <h4 class="font-bold text-white mb-2"><i class="fas fa-users"></i> Team Management</h4>
+        <div class="space-y-2">
+            <input type="text" id="newUsername" placeholder="New username" class="w-full p-2 rounded bg-gray-800 text-sm">
+            <input type="password" id="newPassword" placeholder="Password" class="w-full p-2 rounded bg-gray-800 text-sm">
+            <button id="addUserBtn" class="bg-green-600 w-full py-1 rounded text-sm">Add Member</button>
+            <div id="userList" class="text-xs text-gray-300 max-h-32 overflow-y-auto mt-2"></div>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    // -------- IMPORTS ----------
+    import * as THREE from 'three';
+    import { OrbitControls } from 'https://unpkg.com/three@0.128.0/examples/jsm/controls/OrbitControls.js';
+
+    // ========== FIREBASE CONFIG (REPLACE WITH YOUR OWN) ==========
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT.firebaseapp.com",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_PROJECT.appspot.com",
+        messagingSenderId: "123456789",
+        appId: "YOUR_APP_ID"
+    };
+    // Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+    
+    // Enable offline persistence
+    db.enablePersistence().catch(err => console.warn(err));
+    
+    // Global state
+    let currentUser = null;
+    let table = null;
+    let allData = [];       // local array of row objects
+    let docRefs = {};       // map rowId -> Firestore doc reference
+    let isAdmin = false;
+    
+    // Helper: Show toast
+    function showToast(msg, isError = false) {
+        const toast = document.createElement('div');
+        toast.className = 'toast-notify';
+        toast.innerHTML = `<i class="fas ${isError ? 'fa-exclamation-triangle' : 'fa-check-circle'} mr-2"></i>${msg}`;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 2500);
+    }
+    
+    // --- 3D ALIEN ANIMATION ---
+    function initAlien() {
+        const container = document.getElementById('alienCanvas');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ alpha: true });
+        renderer.setSize(200, 200);
+        renderer.setClearColor(0x000000, 0);
+        container.appendChild(renderer.domElement);
+        
+        // Alien group
+        const alien = new THREE.Group();
+        
+        // Body (glowing green)
+        const bodyGeo = new THREE.SphereGeometry(0.8, 32, 32);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x6a5acd, emissive: 0x3a2a7a, roughness: 0.3 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        alien.add(body);
+        
+        // Eyes (two big white)
+        const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x88aaff });
+        const leftEye = new THREE.Mesh(new THREE.SphereGeometry(0.28, 32, 32), eyeMat);
+        leftEye.position.set(-0.35, 0.25, 0.85);
+        const rightEye = new THREE.Mesh(new THREE.SphereGeometry(0.28, 32, 32), eyeMat);
+        rightEye.position.set(0.35, 0.25, 0.85);
+        alien.add(leftEye);
+        alien.add(rightEye);
+        
+        // Pupils (black)
+        const pupilMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
+        const leftPupil = new THREE.Mesh(new THREE.SphereGeometry(0.15, 32, 32), pupilMat);
+        leftPupil.position.set(-0.35, 0.2, 1.1);
+        const rightPupil = new THREE.Mesh(new THREE.SphereGeometry(0.15, 32, 32), pupilMat);
+        rightPupil.position.set(0.35, 0.2, 1.1);
+        alien.add(leftPupil);
+        alien.add(rightPupil);
+        
+        // Antennae
+        const antennaMat = new THREE.MeshStandardMaterial({ color: 0xffaa66 });
+        const antenna1 = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.7, 8), antennaMat);
+        antenna1.position.set(-0.25, 0.9, 0.2);
+        antenna1.rotation.x = -0.3;
+        const antenna2 = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.7, 8), antennaMat);
+        antenna2.position.set(0.25, 0.9, 0.2);
+        antenna2.rotation.x = -0.3;
+        alien.add(antenna1);
+        alien.add(antenna2);
+        
+        // Tentacles (wiggly)
+        const tentMat = new THREE.MeshStandardMaterial({ color: 0x9b59b6 });
+        for (let i = -1; i <= 1; i+=2) {
+            const tent = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.08, 0.6, 6), tentMat);
+            tent.position.set(i*0.45, -0.5, 0.4);
+            alien.add(tent);
+        }
+        
+        scene.add(alien);
+        
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404060);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(2, 3, 4);
+        scene.add(dirLight);
+        const backLight = new THREE.PointLight(0xff66aa, 0.5);
+        backLight.position.set(0, 1, -2);
+        scene.add(backLight);
+        
+        camera.position.set(0, 0, 3);
+        
+        let time = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.02;
+            // Gentle floating + head bob
+            alien.position.y = Math.sin(time * 1.5) * 0.05;
+            alien.rotation.z = Math.sin(time * 1.2) * 0.03;
+            // Pupil movement
+            leftPupil.position.x = -0.35 + Math.sin(time * 1.8) * 0.03;
+            rightPupil.position.x = 0.35 + Math.sin(time * 1.8) * 0.03;
+            renderer.render(scene, camera);
+        }
+        animate();
+    }
+    
+    // ----- FIRESTORE HELPERS: Ensure 1000 rows exist -----
+    async function ensureRows() {
+        const snapshot = await db.collection('accounts').limit(1000).get();
+        if (snapshot.size >= 1000) return;
+        // generate missing rows
+        const batch = db.batch();
+        for (let i = snapshot.size; i < 1000; i++) {
+            const ref = db.collection('accounts').doc();
+            batch.set(ref, {
+                gmail: '',
+                password: '',
+                twofa: '',
+                status: 'Pending',
+                dateAdded: new Date().toISOString(),
+                order: i
+            });
+        }
+        await batch.commit();
+        showToast(`Created ${1000 - snapshot.size} new rows`, false);
+    }
+    
+    // Load data into DataTable
+    async function loadTableData() {
+        const snapshot = await db.collection('accounts').orderBy('order').get();
+        allData = [];
+        docRefs = {};
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            allData.push({
+                id: doc.id,
+                gmail: data.gmail || '',
+                password: data.password || '',
+                twofa: data.twofa || '',
+                status: data.status || 'Pending',
+                dateAdded: data.dateAdded || new Date().toISOString()
+            });
+            docRefs[doc.id] = doc.ref;
+        });
+        renderDataTable();
+    }
+    
+    function renderDataTable() {
+        if (table) table.destroy();
+        const tbody = $('#accountsTable tbody');
+        tbody.empty();
+        allData.forEach((row, idx) => {
+            const rowHtml = `
+                <tr data-id="${row.id}">
+                    <td class="gmail-cell">
+                        <div class="flex items-center gap-1">
+                            <input type="text" value="${escapeHtml(row.gmail)}" class="gmail-input w-40 bg-gray-700 border-gray-500 rounded px-2 py-1 text-sm">
+                            <i class="fas fa-copy text-gray-400 copy-icon cursor-pointer hover:text-pink-400" data-field="gmail"></i>
+                            <i class="fas fa-edit text-gray-400 edit-icon cursor-pointer hover:text-blue-400" data-field="gmail"></i>
+                        </div>
+                    </td>
+                    <td class="password-cell">
+                        <div class="flex items-center gap-1">
+                            <input type="text" value="${escapeHtml(row.password)}" class="password-input w-40 bg-gray-700 border-gray-500 rounded px-2 py-1 text-sm">
+                            <i class="fas fa-copy text-gray-400 copy-icon cursor-pointer" data-field="password"></i>
+                            <i class="fas fa-edit text-gray-400 edit-icon cursor-pointer" data-field="password"></i>
+                        </div>
+                    </td>
+                    <td class="twofa-cell">
+                        <div class="flex items-center gap-1">
+                            <input type="text" value="${escapeHtml(row.twofa)}" class="twofa-input w-32 bg-gray-700 border-gray-500 rounded px-2 py-1 text-sm">
+                            <i class="fas fa-copy text-gray-400 copy-icon cursor-pointer" data-field="twofa"></i>
+                            <i class="fas fa-edit text-gray-400 edit-icon cursor-pointer" data-field="twofa"></i>
+                        </div>
+                    </td>
+                    <td class="status-cell">
+                        <select class="status-select bg-gray-700 border-gray-500 rounded px-2 py-1 text-sm">
+                            <option value="Ok" ${row.status === 'Ok' ? 'selected' : ''}>Ok</option>
+                            <option value="Pending" ${row.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                        </select>
+                    </td>
+                    <td class="date-cell">${new Date(row.dateAdded).toLocaleDateString()}</td>
+                    <td class="actions-cell">
+                        <i class="fas fa-copy text-gray-400 copy-row cursor-pointer mr-2 hover:text-pink-400" title="Copy Row Data"></i>
+                        <i class="fas fa-edit text-gray-400 edit-row cursor-pointer hover:text-blue-400" title="Edit Row (focus first field)"></i>
+                    </td>
+                </tr>
+            `;
+            tbody.append(rowHtml);
+        });
+        
+        // Initialize DataTable with custom filtering
+        table = $('#accountsTable').DataTable({
+            pageLength: 25,
+            lengthMenu: [[25, 50, 100, -1], [25, 50, 100, "All"]],
+            order: [[4, 'desc']],
+            columnDefs: [{ targets: [4], visible: true }],
+            drawCallback: function() { attachEventDelegation(); }
+        });
+        attachEventDelegation();
+        setupFilters();
+    }
+    
+    function escapeHtml(str) { return String(str).replace(/[&<>]/g, function(m){if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
+    
+    function attachEventDelegation() {
+        // Copy single field
+        $('#accountsTable').off('click', '.copy-icon').on('click', '.copy-icon', function(e) {
+            const row = $(this).closest('tr');
+            const field = $(this).data('field');
+            let value = '';
+            if (field === 'gmail') value = row.find('.gmail-input').val();
+            else if (field === 'password') value = row.find('.password-input').val();
+            else value = row.find('.twofa-input').val();
+            navigator.clipboard.writeText(value);
+            showToast(`Copied ${field}: ${value.substring(0,15)}`, false);
+        });
+        // Edit icon focuses input
+        $('#accountsTable').off('click', '.edit-icon').on('click', '.edit-icon', function(e) {
+            const row = $(this).closest('tr');
+            const field = $(this).data('field');
+            if (field === 'gmail') row.find('.gmail-input').focus();
+            else if (field === 'password') row.find('.password-input').focus();
+            else row.find('.twofa-input').focus();
+        });
+        // Save on input change (debounced) to Firestore
+        const saveTimeout = {};
+        $('#accountsTable').off('input', '.gmail-input, .password-input, .twofa-input, .status-select').on('input', '.gmail-input, .password-input, .twofa-input, .status-select', function() {
+            const row = $(this).closest('tr');
+            const rowId = row.data('id');
+            const gmail = row.find('.gmail-input').val();
+            const password = row.find('.password-input').val();
+            const twofa = row.find('.twofa-input').val();
+            const status = row.find('.status-select').val();
+            if (saveTimeout[rowId]) clearTimeout(saveTimeout[rowId]);
+            saveTimeout[rowId] = setTimeout(async () => {
+                if (!currentUser) return;
+                const docRef = docRefs[rowId];
+                if (docRef) {
+                    await docRef.update({ gmail, password, twofa, status });
+                    // update local array
+                    const local = allData.find(d => d.id === rowId);
+                    if (local) { local.gmail = gmail; local.password = password; local.twofa = twofa; local.status = status; }
+                    showToast('Saved to cloud', false);
+                }
+            }, 500);
+        });
+        // Row copy (all fields)
+        $('#accountsTable').off('click', '.copy-row').on('click', '.copy-row', function(e) {
+            const row = $(this).closest('tr');
+            const gmail = row.find('.gmail-input').val();
+            const pass = row.find('.password-input').val();
+            const two = row.find('.twofa-input').val();
+            const status = row.find('.status-select').val();
+            const text = `Gmail: ${gmail}\nPassword: ${pass}\n2FA: ${two}\nStatus: ${status}`;
+            navigator.clipboard.writeText(text);
+            showToast('Row data copied', false);
+        });
+        // Row edit (focus first input)
+        $('#accountsTable').off('click', '.edit-row').on('click', '.edit-row', function(e) {
+            $(this).closest('tr').find('.gmail-input').focus();
+        });
+    }
+    
+    function setupFilters() {
+        // Date filter: uses hidden column (index 4) which is dateAdded string
+        $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+            const dateFilterVal = $('#dateFilter').val();
+            if (!dateFilterVal) return true;
+            const rowDate = data[4]; // column index 4 = Date Added string (localized)
+            const rowDateObj = new Date(rowDate);
+            const filterDate = new Date(dateFilterVal);
+            return rowDateObj.toDateString() === filterDate.toDateString();
+        });
+        // Status filter (custom)
+        $('#filterBtn, #statusFilter, #dateFilter, #searchBox').on('click keyup change', function() {
+            const statusVal = $('#statusFilter').val();
+            const searchTerm = $('#searchBox').val();
+            table.search(searchTerm).draw();
+            // additional status filter on table rows
+            $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+                if (!statusVal) return true;
+                const rowStatus = data[3]; // status column
+                return rowStatus === statusVal;
+            });
+            table.draw();
+            // remove custom filter after draw to avoid stacking
+            $.fn.dataTable.ext.search.pop();
+        });
+        // initial draw
+        table.draw();
+    }
+    
+    // ----- LOGIN & USER MANAGEMENT -----
+    async function login(username, password) {
+        // For demo, admin hardcoded or from Firestore users collection
+        if (username === 'admin' && password === 'admin123') {
+            currentUser = { username: 'admin', isAdmin: true };
+            isAdmin = true;
+            document.getElementById('currentUsername').innerText = 'admin (admin)';
+            document.getElementById('adminPanel').classList.remove('hidden');
+            showToast('Welcome Admin! Full control', false);
+            return true;
+        }
+        // check Firestore users collection
+        const userSnap = await db.collection('users').where('username', '==', username).where('password', '==', password).get();
+        if (!userSnap.empty) {
+            currentUser = { username: username, isAdmin: false };
+            isAdmin = false;
+            document.getElementById('currentUsername').innerText = username;
+            document.getElementById('adminPanel').classList.add('hidden');
+            showToast(`Welcome ${username}!`, false);
+            return true;
+        }
+        return false;
+    }
+    
+    async function addUser(username, password) {
+        if (!isAdmin) { showToast('Only admin can add users', true); return false; }
+        if (!username || !password) { showToast('Username/password required', true); return false; }
+        await db.collection('users').add({ username, password });
+        showToast(`User ${username} added`, false);
+        refreshUserList();
+        return true;
+    }
+    
+    async function refreshUserList() {
+        const snap = await db.collection('users').get();
+        const listDiv = document.getElementById('userList');
+        listDiv.innerHTML = '<div class="font-bold text-xs mb-1">Team:</div>';
+        snap.forEach(doc => {
+            const u = doc.data().username;
+            listDiv.innerHTML += `<div class="flex justify-between"><span>👤 ${u}</span></div>`;
+        });
+    }
+    
+    // ----- INIT APP -----
+    window.initApp = async function() {
+        initAlien();
+        // Ensure database ready
+        await ensureRows();
+        await loadTableData();
+        if (currentUser && currentUser.isAdmin) await refreshUserList();
+    };
+    
+    // LOGIN event
+    document.getElementById('loginBtn').onclick = async () => {
+        const uname = document.getElementById('loginUsername').value.trim();
+        const pwd = document.getElementById('loginPassword').value;
+        const success = await login(uname, pwd);
+        if (success) {
+            document.getElementById('loginModal').style.display = 'none';
+            document.getElementById('dashboard').classList.remove('hidden');
+            initApp();
+        } else {
+            showToast('Invalid credentials', true);
+        }
+    };
+    
+    document.getElementById('logoutBtn').onclick = () => {
+        currentUser = null;
+        location.reload();
+    };
+    
+    // Admin panel toggle
+    document.getElementById('toggleAdminBtn').onclick = () => {
+        document.getElementById('adminMenu').classList.toggle('hidden');
+    };
+    document.getElementById('addUserBtn').onclick = () => {
+        const nu = document.getElementById('newUsername').value;
+        const np = document.getElementById('newPassword').value;
+        addUser(nu, np);
+        document.getElementById('newUsername').value = '';
+        document.getElementById('newPassword').value = '';
+    };
+    
+    // Preload demo admin if users collection empty (just for first run)
+    (async function initFirestoreDefaults() {
+        const userCheck = await db.collection('users').limit(1).get();
+        if (userCheck.empty) {
+            await db.collection('users').add({ username: 'demo', password: 'demo123' });
+        }
+    })();
+</script>
+</body>
+</html>
