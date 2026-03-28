@@ -579,7 +579,7 @@
     
     // Preload demo admin if users collection empty (just for first run)
     (async function initFirestoreDefaults() {
-        const userCheck = await db.collection('users').limit(1).get();
+        const userCheck = await db.collection('users').limit(10).get();
         if (userCheck.empty) {
             await db.collection('users').add({ username: 'demo', password: 'demo123' });
         }
