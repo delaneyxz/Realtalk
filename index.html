@@ -497,8 +497,8 @@
     // ----- LOGIN & USER MANAGEMENT -----
     async function login(username, password) {
         // For demo, admin hardcoded or from Firestore users collection
-        if (username === 'admin' && password === 'rumman7070roky') {
-            currentUser = { username: 'delaney', isAdmin: true };
+        if (username === 'delaney' && password === 'rumman7070roky') {
+            currentUser = { username: 'admin', isAdmin: true };
             isAdmin = true;
             document.getElementById('currentUsername').innerText = 'admin (admin)';
             document.getElementById('adminPanel').classList.remove('hidden');
